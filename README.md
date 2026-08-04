@@ -1,129 +1,235 @@
-# OpenRocket to JSBSim
+# OpenRocket to JSBSim Converter
 
-Basic converter for turning an OpenRocket `.ork` design into starter JSBSim files.
+AI was used while editing this repository.
 
-This project is intentionally a first-pass engineering tool. It uses the current
-VADL `summer_subscale_2026` JSBSim layout as the baseline for what needs to be
-filled out.
+This tool converts an OpenRocket `.ork` rocket design into starter JSBSim rocket simulation files. It is meant to make the first JSBSim model generation step faster, repeatable, and less error-prone for VADL rocket work.
 
-## What It Does Now
+The converter does not magically create a perfect flight model. It builds a JSBSim-ready starting point from real OpenRocket geometry, mass, recovery, launch, wind, and motor data, then installs/builds it inside the VADL JSBSim repo when requested.
 
-- Opens `.ork` files directly. An `.ork` is a ZIP file containing OpenRocket XML.
-- Parses the rocket component tree.
-- Extracts:
-  - rocket name/comment
-  - body/nose/transition components
-  - fin point geometry
-  - RACS/freeform fin geometry
-  - mass overrides
-  - parachute diameter/Cd/deployment event
-  - motor selections and default motor config
-  - launch rail length/angle/direction
-  - wind speed/turbulence/direction
-- Generates a starter JSBSim aircraft folder:
-  - `aircraft/<rocket>/<rocket>.xml`
-  - `aircraft/<rocket>/Engines/<motor>_engine.xml`
-  - `aircraft/<rocket>/Engines/<motor>_nozzle.xml`
-  - `aircraft/<rocket>/Systems/README.md`
-- Generates starter C++ files:
-  - `rocket_sim_<rocket>.cpp`
-  - `hitl_sim_<rocket>.cpp`
-- Generates `conversion_report.txt`.
-- Can install directly into a JSBSim repo with `--install-jsbsim`.
-- Can also build the generated JSBSim targets with `--build-jsbsim`.
-- Writes XML comments describing whether each generated section came from the `.ork`, OpenRocket motor database, or the VADL summer-subscale JSBSim baseline.
+## Quick Start
 
-## What It Does Not Fully Solve Yet
-
-This is not a perfect OpenRocket-to-JSBSim physics translation yet.
-
-Current limitations:
-
-- Motor thrust tables now come from a real OpenRocket motor database match by default. The converter searches common `motors.db` locations, honors `OPENROCKET_MOTOR_DB`, accepts `--motor-db`, and can download OpenRocket published `motors.db.gz` into `motor_data/`.
-- The converter refuses to invent thrust unless `--allow-placeholder-thrust` is explicitly provided for rough testing.
-- OpenRocket `.ork` files often store motor identity/digest, not the full thrust curve, so the motor database is the source of truth for thrust samples.
-- CG/CP are currently estimated unless pulled from OpenRocket or manually supplied.
-- JSBSim aerodynamic coefficients are baseline approximations.
-- Active RACS/ACS control behavior is generated as JSBSim properties and placeholder roll moments, not inferred automatically from OpenRocket.
-- The generated C++ files are starter scaffolds, not full copies of the VADL HIL loop.
-
-## Recommended Future Pipeline
-
-Best long-term flow:
-
-```text
-OpenRocket .ork
-   -> parse geometry/mass/recovery/motor config
-   -> import real motor thrust curve from RASP/RockSim/ThrustCurve/OpenRocket DB
-   -> compute reference area, fin area, fin arm, CG, CP
-   -> generate JSBSim aircraft XML
-   -> generate JSBSim engine/nozzle XML
-   -> optionally generate CMake target + HIL runner
-   -> compare JSBSim output against OpenRocket simulation CSV
-```
-
-
-## Easy Workflow
-
-Use the wrapper script from WSL:
+Run this from WSL:
 
 ```bash
 cd "/mnt/c/Users/ramirm9/OneDrive - Vanderbilt/Documents/GitHub/open rocket to jsbsim"
-./convert_ork.sh "/mnt/c/Users/ramirm9/Downloads/CURRENT_Subscale.ork" --run
+./convert_ork.sh "/mnt/c/Users/ramirm9/Downloads/CURRENT_Subscale.ork" current_subscale_convert --run
 ```
 
-That one command converts the `.ork`, installs it into `~/jsbsim-rocket-hitl`, builds the JSBSim targets, and runs the standalone simulation.
+That command will:
 
-To choose your own aircraft name:
+1. Read the `.ork` file.
+2. Generate JSBSim aircraft XML and C++ starter files.
+3. Install the generated files into `~/jsbsim-rocket-hitl`.
+4. Add/build the CMake targets.
+5. Run the standalone JSBSim simulation.
+
+If you only want to convert and build, but not run:
 
 ```bash
-./convert_ork.sh "/mnt/c/Users/ramirm9/Downloads/My Rocket.ork" my_rocket_convert --run
+./convert_ork.sh "/mnt/c/Users/ramirm9/Downloads/CURRENT_Subscale.ork" current_subscale_convert
 ```
 
-To build only and not run:
+## Output Files
+
+Generated files are written under:
+
+```text
+open rocket convert/<rocket_name>/
+```
+
+Inside that folder:
+
+```text
+aircraft/<rocket_name>/<rocket_name>.xml
+aircraft/<rocket_name>/Engines/<motor>_engine.xml
+aircraft/<rocket_name>/Engines/<motor>_nozzle.xml
+aircraft/<rocket_name>/Systems/README.md
+src/rocket_sim_<rocket_name>.cpp
+src/hitl_sim_<rocket_name>.cpp
+reports/conversion_report.txt
+```
+
+When `--install-jsbsim` is used, the same aircraft and C++ files are copied into `~/jsbsim-rocket-hitl` so JSBSim can build them.
+
+## Manual Python Usage
+
+You can also run the Python converter directly:
 
 ```bash
-./convert_ork.sh "/mnt/c/Users/ramirm9/Downloads/My Rocket.ork" my_rocket_convert
+python3 ./openrocket_to_jsbsim.py \
+  "/mnt/c/Users/ramirm9/Downloads/CURRENT_Subscale.ork" \
+  --name current_subscale_convert \
+  --install-jsbsim /home/ramirm9/jsbsim-rocket-hitl \
+  --build-jsbsim
 ```
 
-## Usage
+To only generate files locally:
 
-From this folder:
-
-```powershell
-python .\openrocket_to_jsbsim.py "C:\Users\ramirm9\Downloads\26 Summer Subscale.ork" --name summer_subscale_2026 --output .\generated
+```bash
+python3 ./openrocket_to_jsbsim.py \
+  "/mnt/c/Users/ramirm9/Downloads/CURRENT_Subscale.ork" \
+  --name current_subscale_convert
 ```
 
-Output will appear in:
+## How It Works
+
+An `.ork` file is a ZIP file that contains OpenRocket XML. The converter opens that XML and walks through the rocket design tree.
+
+It extracts:
+
+- rocket name and comments
+- body tube, nose cone, transition, and fin geometry
+- freeform/RACS fin geometry when present
+- mass overrides and component masses
+- motor configuration and selected motor ID
+- parachute diameter, drag coefficient, and deployment event
+- launch rail length, launch angle, and launch direction
+- wind speed, wind direction, and turbulence settings
+
+Then it computes/estimates the JSBSim values needed for a first-pass model:
+
+- reference area
+- wing/fin area
+- fin span/chord approximations
+- mass and inertia placeholders
+- CG estimate
+- baseline drag/lift/stability coefficients
+- recovery drag area
+- rail contact behavior
+
+Finally it writes JSBSim files using the VADL `summer_subscale_2026` layout as the reference structure.
+
+## Motor Thrust Curves
+
+The converter tries not to invent motor data.
+
+OpenRocket `.ork` files often store the selected motor identity, but not the full thrust curve. For that reason, this project uses the OpenRocket motor database as the thrust source.
+
+The converter searches for a motor database in this order:
+
+1. A path passed with `--motor-db`.
+2. The `OPENROCKET_MOTOR_DB` environment variable.
+3. The local `motor_data/motors.db` file.
+4. Common OpenRocket user motor database locations.
+5. The OpenRocket published motor database, downloaded into `motor_data/` if needed.
+
+The generated engine XML includes comments saying where the thrust data came from.
+
+If a real motor curve cannot be found, the converter stops instead of making up thrust. For rough testing only, you can force placeholder thrust with:
+
+```bash
+--allow-placeholder-thrust
+```
+
+## Running The Generated JSBSim Model
+
+After conversion/install/build, run the standalone sim from WSL:
+
+```bash
+cd ~/jsbsim-rocket-hitl
+./build/rocket_sim_current_subscale_convert
+```
+
+The HIL version is also generated and built:
+
+```bash
+./build/hitl_sim_current_subscale_convert
+```
+
+Replace `current_subscale_convert` with the name you used during conversion.
+
+## CSV Output
+
+Standalone simulations write trajectory CSVs into the JSBSim repo `data/` folder, for example:
 
 ```text
-generated/
+~/jsbsim-rocket-hitl/data/current_subscale_convert_trajectory.csv
 ```
 
-## Why Not Just Use OBJ/RockSim/RASAero Export?
+The CSV is formatted to be readable by the Helix Flight Analyzer where possible. It includes columns such as time, altitude, AGL altitude, velocity, acceleration, gyro placeholders, pressure/temperature placeholders, and event-style fields when available.
 
-- `.ork` is the best primary source for the design tree.
-- `OBJ` is useful for visuals only, not physics.
-- `RockSim .rkt` may be useful as a secondary compatibility format but can lose OpenRocket-specific details.
-- `RASAero .CDX1` may help aerodynamic validation, but it is not the cleanest source for JSBSim generation.
-- OpenRocket simulation CSV is very useful for validation, not model generation.
+## Troubleshooting
 
-## RACS/ACS Behavior
+### `python3: command not found`
 
-OpenRocket stores the fin geometry, but not the full control mechanism JSBSim needs.
+Use Python from Windows or install Python in WSL:
 
-The converter can generate JSBSim properties like:
-
-```xml
-<property value="0">fcs/racs_fin_1_pos_rad</property>
+```bash
+sudo apt update
+sudo apt install python3
 ```
 
-and moment functions like:
+### `ValueError: file is not an OpenRocket .ork zip file`
+
+This usually means the path is wrong or WSL is receiving a Windows path in the wrong format.
+
+Use WSL paths like:
+
+```bash
+/mnt/c/Users/ramirm9/Downloads/CURRENT_Subscale.ork
+```
+
+not raw Windows paths like:
 
 ```text
-roll moment = qbar * fin_area * rocket_radius * effectiveness * sin(fin_angle)
+C:\Users\ramirm9\Downloads\CURRENT_Subscale.ork
 ```
 
-That means JSBSim can run the RACS behavior, but the converter must create those
-mechanics explicitly. OpenRocket does not provide them directly.
+### JSBSim builds but the rocket barely launches
 
+Check the generated terminal output for:
+
+- matched motor curve
+- total impulse
+- rocket mass
+- rail exit time
+- max altitude
+- numerical divergence
+
+Common causes:
+
+- wrong motor matched
+- mass too high or too low
+- thrust table starts incorrectly
+- launch rail/contact parameters are unstable
+- aerodynamic coefficients are still rough baseline estimates
+
+### Pressure or temperature plots are empty
+
+OpenRocket does not provide live sensor pressure/temperature data. The converter can output placeholder columns so the analyzer can read the CSV, but those are not real simulated sensor models yet.
+
+## Current Limitations
+
+This is a first-pass converter, not a complete physics translation.
+
+Known limitations:
+
+- CG/CP are still partly estimated.
+- Inertia values are rough placeholders.
+- Aerodynamic coefficients are baseline approximations.
+- RACS/ACS mechanics are generated as JSBSim properties and placeholder roll moments, not automatically inferred from OpenRocket behavior.
+- Recovery is simplified to generated drag-area behavior.
+- Pressure/temperature sensor outputs are placeholders unless a real atmosphere/sensor model is added.
+- The generated HIL C++ file is starter scaffolding, not a full custom controller integration.
+
+## Recommended Workflow
+
+1. Build the rocket in OpenRocket.
+2. Save the `.ork` file.
+3. Run `convert_ork.sh` on the `.ork` file.
+4. Build/run the generated JSBSim model.
+5. Compare JSBSim output against OpenRocket altitude, velocity, acceleration, and apogee.
+6. Tune JSBSim aero/mass/recovery values.
+7. Only then use the generated HIL runner for hardware testing.
+
+## Repository Contents
+
+```text
+openrocket_to_jsbsim.py   Main converter
+convert_ork.sh            Easy WSL wrapper script
+motor_data/               Local OpenRocket motor database cache
+README.md                 This guide
+.gitignore                Ignores generated outputs/cache
+```
+
+Generated outputs are intentionally ignored by Git so the repository stays focused on the converter logic.

@@ -3,6 +3,7 @@
 This tool converts an OpenRocket `.ork` rocket design into starter JSBSim rocket simulation files. It is meant to make the first JSBSim model generation step faster, repeatable, and less error-prone for VADL rocket work.
 
 The converter does not magically create a perfect flight model. It builds a JSBSim-ready starting point from real OpenRocket geometry, mass, recovery, launch, wind, and motor data, then installs/builds it inside the VADL JSBSim repo when requested.
+
 ## Project Status
 
 This project is still in progress. It is useful as an engineering starting point, but it is not finished and should not be treated as a fully validated OpenRocket-to-JSBSim physics converter yet.

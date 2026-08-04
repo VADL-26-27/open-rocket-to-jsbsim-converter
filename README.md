@@ -3,6 +3,27 @@
 This tool converts an OpenRocket `.ork` rocket design into starter JSBSim rocket simulation files. It is meant to make the first JSBSim model generation step faster, repeatable, and less error-prone for VADL rocket work.
 
 The converter does not magically create a perfect flight model. It builds a JSBSim-ready starting point from real OpenRocket geometry, mass, recovery, launch, wind, and motor data, then installs/builds it inside the VADL JSBSim repo when requested.
+## Project Status
+
+This project is still in progress. It is useful as an engineering starting point, but it is not finished and should not be treated as a fully validated OpenRocket-to-JSBSim physics converter yet.
+
+The current goal is to automate the repetitive file-generation work while preserving enough comments and structure for engineers to tune the generated JSBSim model by hand. Every converted rocket should still be checked against OpenRocket, real flight data, or other trusted simulation results before it is used for HIL testing or design decisions.
+
+Major areas that still need improvement:
+
+- More accurate CG and CP extraction/validation from OpenRocket.
+- Better mass and inertia modeling for distributed components.
+- More faithful aerodynamic coefficient generation instead of baseline approximations.
+- Better rail/launch-contact modeling to avoid numerical instability at liftoff.
+- More complete recovery modeling for drogue/main parachutes and deployment timing.
+- Real pressure, temperature, and sensor-output modeling instead of placeholder columns.
+- Better RACS/ACS control-surface modeling from actual geometry and actuator behavior.
+- More robust motor matching when OpenRocket stores only partial motor identifiers.
+- Automated validation against OpenRocket exported simulation CSVs.
+- Cleaner handling of edge cases such as staged rockets, clustered motors, unusual fins, pods, boosters, and custom components.
+- More complete generated HIL code that matches the final JSBSim/HIL communication architecture.
+
+In short: this converter reduces setup work, but the generated model still needs engineering review and tuning.
 
 ## Quick Start
 

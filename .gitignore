@@ -1,5 +1,17 @@
 __pycache__/
 *.pyc
-generated/
 .venv/
 venv/
+
+# Generated converter outputs
+open rocket convert/
+generated*/
+
+# Downloaded/generated motor databases. The converter can fetch these automatically.
+motor_data/
+*.db
+*.db.gz
+
+# Local OS/editor noise
+.DS_Store
+.vscode/

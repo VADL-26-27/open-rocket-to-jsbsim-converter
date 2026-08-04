@@ -11,8 +11,8 @@ The converter does not magically create a perfect flight model. It builds a JSBS
 Run this from WSL:
 
 ```bash
-cd "/mnt/c/Users/ramirm9/OneDrive - Vanderbilt/Documents/GitHub/open rocket to jsbsim"
-./convert_ork.sh "/mnt/c/Users/ramirm9/Downloads/CURRENT_Subscale.ork" current_subscale_convert --run
+cd open-rocket-to-jsbsim-converter
+./convert_ork.sh "<path-to-your-openrocket-file.ork>" <rocket_name> --run
 ```
 
 That command will:
@@ -26,7 +26,7 @@ That command will:
 If you only want to convert and build, but not run:
 
 ```bash
-./convert_ork.sh "/mnt/c/Users/ramirm9/Downloads/CURRENT_Subscale.ork" current_subscale_convert
+./convert_ork.sh "<path-to-your-openrocket-file.ork>" <rocket_name>
 ```
 
 ## Output Files
@@ -57,9 +57,9 @@ You can also run the Python converter directly:
 
 ```bash
 python3 ./openrocket_to_jsbsim.py \
-  "/mnt/c/Users/ramirm9/Downloads/CURRENT_Subscale.ork" \
-  --name current_subscale_convert \
-  --install-jsbsim /home/ramirm9/jsbsim-rocket-hitl \
+  "<path-to-your-openrocket-file.ork>" \
+  --name <rocket_name> \
+  --install-jsbsim <path-to-jsbsim-rocket-hitl> \
   --build-jsbsim
 ```
 
@@ -67,8 +67,8 @@ To only generate files locally:
 
 ```bash
 python3 ./openrocket_to_jsbsim.py \
-  "/mnt/c/Users/ramirm9/Downloads/CURRENT_Subscale.ork" \
-  --name current_subscale_convert
+  "<path-to-your-openrocket-file.ork>" \
+  --name <rocket_name>
 ```
 
 ## How It Works
@@ -127,23 +127,23 @@ After conversion/install/build, run the standalone sim from WSL:
 
 ```bash
 cd ~/jsbsim-rocket-hitl
-./build/rocket_sim_current_subscale_convert
+./build/rocket_sim_<rocket_name>
 ```
 
 The HIL version is also generated and built:
 
 ```bash
-./build/hitl_sim_current_subscale_convert
+./build/hitl_sim_<rocket_name>
 ```
 
-Replace `current_subscale_convert` with the name you used during conversion.
+Replace `<rocket_name>` with the name you used during conversion.
 
 ## CSV Output
 
 Standalone simulations write trajectory CSVs into the JSBSim repo `data/` folder, for example:
 
 ```text
-~/jsbsim-rocket-hitl/data/current_subscale_convert_trajectory.csv
+<path-to-jsbsim-rocket-hitl>/data/<rocket_name>_trajectory.csv
 ```
 
 The CSV is formatted to be readable by the Helix Flight Analyzer where possible. It includes columns such as time, altitude, AGL altitude, velocity, acceleration, gyro placeholders, pressure/temperature placeholders, and event-style fields when available.
@@ -166,13 +166,13 @@ This usually means the path is wrong or WSL is receiving a Windows path in the w
 Use WSL paths like:
 
 ```bash
-/mnt/c/Users/ramirm9/Downloads/CURRENT_Subscale.ork
+/mnt/c/path/to/your/rocket.ork
 ```
 
 not raw Windows paths like:
 
 ```text
-C:\Users\ramirm9\Downloads\CURRENT_Subscale.ork
+C:\path\to\your\rocket.ork
 ```
 
 ### JSBSim builds but the rocket barely launches
@@ -233,3 +233,4 @@ README.md                 This guide
 ```
 
 Generated outputs are intentionally ignored by Git so the repository stays focused on the converter logic.
+
